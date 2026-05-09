@@ -102,16 +102,7 @@ class SimulationRunner:
             from .systems import detection
             detection.detect_broadcasts(civ, self.universe)
 
-        # 2. Process pending broadcast strikes
-        signals_to_process = list(self.universe.broadcast_signals)
-        self.universe.broadcast_signals.clear()
-        for signal in signals_to_process:
-            target = self._find_civ(signal['target_id'])
-            if target:
-                from .systems import broadcast_strike
-                broadcast_strike.process_global_strikes(target, self.universe)
-
-        # 3. Shuffle active civs
+        # 2. Shuffle active civs
         active = self._active_civs()
         random.shuffle(active)
 
@@ -122,6 +113,15 @@ class SimulationRunner:
 
             action = civ.decide(self.universe)
             self._execute(civ, action)
+
+        # Process pending broadcast strikes (after civs have seen them)
+        signals_to_process = list(self.universe.broadcast_signals)
+        self.universe.broadcast_signals.clear()
+        for signal in signals_to_process:
+            target = self._find_civ(signal.get('target_id', ''))
+            if target and not target.is_destroyed:
+                from .systems import broadcast_strike
+                broadcast_strike.process_global_strikes(target, self.universe)
 
         # 5. Process economy (maintenance + breakthrough checks)
         for civ in self._active_civs():
@@ -264,12 +264,20 @@ class SimulationRunner:
     # ── Target selection helpers ───────────────────────────
 
     def _pick_attack_target(self, civ: Civilization) -> Civilization | None:
-        """Pick the weakest known non-destroyed target."""
+        """Pick attack target. Cleaners prioritize broadcasters, others pick weakest."""
+        from .core.enums import Strategy as StratEnum
         candidates: list[tuple[float, Civilization]] = []
+
+        is_cleaner = getattr(civ.strategy, 'label', '') == '清理者'
+
         for cid in civ.memory.known_civs:
             other = self._find_civ(cid)
             if other and not other.is_destroyed:
-                candidates.append((other.military.military_power, other))
+                priority = 0.0
+                if is_cleaner and other.military.stealth < 0.15:
+                    priority = 1000.0  # broadcast target → highest priority
+                candidates.append((other.military.military_power - priority, other))
+
         if not candidates:
             return None
         candidates.sort(key=lambda x: x[0])
