@@ -89,10 +89,10 @@ def process_treaty_proposal(
         target.diplomacy.propose_treaty(proposer.id, treaty_type)
 
         proposer.diplomacy.communication_log.append(
-            f'T{turn(universe)}: 与 {target.name} 签署 {treaty_type.value}'
+            f'T{turn(universe)}: 与 {target.name} 签署 {treaty_type.label}'
         )
         target.diplomacy.communication_log.append(
-            f'T{turn(universe)}: 与 {proposer.name} 签署 {treaty_type.value}'
+            f'T{turn(universe)}: 与 {proposer.name} 签署 {treaty_type.label}'
         )
 
         universe.event_bus.publish(TreatyEvent(
@@ -115,7 +115,7 @@ def process_treaty_proposal(
                 pass
 
         universe.log_event(
-            f'{proposer.name} 与 {target.name} 签署了 {treaty_type.value} 条约'
+            f'{proposer.name} 与 {target.name} 签署了 {treaty_type.label}'
         )
     else:
         universe.event_bus.publish(TreatyEvent(
@@ -126,7 +126,7 @@ def process_treaty_proposal(
             action='rejected',
         ))
         universe.log_event(
-            f'{target.name} 拒绝了 {proposer.name} 的 {treaty_type.value} 条约'
+            f'{target.name} 拒绝了 {proposer.name} 的 {treaty_type.label}'
         )
 
 
@@ -196,7 +196,7 @@ def tick_treaties(civ: Civilization, universe: Universe) -> None:
             treaty_type=treaty.type,
             action='expired',
         ))
-        universe.log_event(f'{civ.name} 与 {target_name} 的 {treaty.type.value} 条约到期')
+        universe.log_event(f'{civ.name} 与 {target_name} 的 {treaty.type.label}到期')
 
         # Remove from both sides
         civ.diplomacy.treaties.pop(pid, None)

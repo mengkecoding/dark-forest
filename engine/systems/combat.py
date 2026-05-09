@@ -80,7 +80,7 @@ def resolve_attack(
             weapon=weapon,
         ))
         universe.log_event(
-            f'⚔ {attacker.name} 使用 {weapon.value} 摧毁了 {target.name}！'
+            f'💥 {attacker.name} 使用{weapon.label}摧毁了 {target.name}！'
         )
 
         # Attacker is exposed by the attack

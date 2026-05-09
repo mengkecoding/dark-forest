@@ -38,12 +38,6 @@ class Action(str, Enum):
     NOTHING = 'nothing'
 
 
-class TreatyType(str, Enum):
-    NON_AGGRESSION = 'non_aggression'
-    ALLIANCE = 'alliance'
-    TRADE = 'trade'
-
-
 class CivState(str, Enum):
     """Civilization diplomatic/military state."""
     PEACEFUL = 'peaceful'
@@ -57,3 +51,25 @@ class WeaponType(str, Enum):
     CONVENTIONAL = 'conventional'
     PHOTOID = 'photoid'
     DUAL_VECTOR_FOIL = 'dual_vector_foil'
+
+    @property
+    def label(self) -> str:
+        return {
+            WeaponType.CONVENTIONAL: '常规打击',
+            WeaponType.PHOTOID: '光粒',
+            WeaponType.DUAL_VECTOR_FOIL: '二向箔',
+        }[self]
+
+
+class TreatyType(str, Enum):
+    NON_AGGRESSION = 'non_aggression'
+    ALLIANCE = 'alliance'
+    TRADE = 'trade'
+
+    @property
+    def label(self) -> str:
+        return {
+            TreatyType.NON_AGGRESSION: '互不侵犯条约',
+            TreatyType.ALLIANCE: '军事同盟',
+            TreatyType.TRADE: '贸易协定',
+        }[self]
