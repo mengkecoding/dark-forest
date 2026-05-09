@@ -1,0 +1,23 @@
+{
+  "name": "技术爆炸",
+  "description": "验证技术爆炸能否逆转战局。",
+  "config": {
+    "universe_width": 400,
+    "max_turns": 200,
+    "hider_count": 1,
+    "aggressor_count": 1,
+    "diplomat_count": 0,
+    "observer_count": 1,
+    "cleaner_count": 1,
+    "base_detection_range": 100,
+    "min_spawn_distance": 30,
+    "initial_tech_range": [
+      0.5,
+      1.0
+    ],
+    "initial_military_range": [
+      5,
+      15
+    ]
+  }
+}

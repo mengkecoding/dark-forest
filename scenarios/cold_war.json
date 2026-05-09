@@ -1,0 +1,19 @@
+{
+  "name": "冷战格局",
+  "description": "两大侵略者阵营对峙，弱小文明在夹缝中求生。",
+  "config": {
+    "universe_width": 400,
+    "max_turns": 400,
+    "hider_count": 3,
+    "aggressor_count": 2,
+    "diplomat_count": 2,
+    "observer_count": 1,
+    "cleaner_count": 1,
+    "base_detection_range": 60,
+    "min_spawn_distance": 30,
+    "initial_military_range": [
+      20,
+      50
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "经典黑暗森林",
+  "description": "隐藏者、侵略者、外交家、观察者、清理者共存。验证黑暗森林定律。",
+  "config": {
+    "universe_width": 300,
+    "max_turns": 300,
+    "hider_count": 3,
+    "aggressor_count": 2,
+    "diplomat_count": 2,
+    "observer_count": 1,
+    "cleaner_count": 1,
+    "base_detection_range": 80,
+    "min_spawn_distance": 15
+  }
+}

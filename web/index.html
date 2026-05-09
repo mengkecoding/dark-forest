@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌌 黑暗森林模拟器</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:#06060c;color:#ccc;overflow:hidden}
+#loading{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);color:#6cf;font-size:18px;z-index:100}
+#app{display:none;height:100vh;flex-direction:column}
+.topbar{display:flex;align-items:center;gap:8px;padding:8px 16px;background:#0d0d16;border-bottom:1px solid #1a1a24}
+.topbar h1{font-size:16px;color:#6cf;margin-right:16px}
+.topbar button{padding:5px 12px;border:1px solid #334;border-radius:4px;background:#1a1a28;color:#aac;cursor:pointer;font-size:12px}
+.topbar button:hover:not(:disabled){background:#223;border-color:#6cf;color:#fff}
+.topbar button:disabled{opacity:.3}
+.topbar button.accent{background:#136;border-color:#48f;color:#8cf}
+.topbar select{padding:5px 8px;background:#1a1a28;border:1px solid #334;border-radius:4px;color:#ccc;font-size:12px}
+.topbar .stat{margin-left:12px;font-size:12px;color:#666}
+.topbar .stat b{color:#aac}
+.main{display:flex;flex:1;overflow:hidden}
+.canvas-wrap{flex:1;position:relative;cursor:grab;min-width:0}
+.canvas-wrap:active{cursor:grabbing}
+#cv{display:block;width:100%;height:100%}
+.panel{width:280px;min-width:280px;background:#0d0d16;border-left:1px solid #1a1a24;display:flex;flex-direction:column;overflow-y:auto;font-size:12px}
+.panel h3{padding:12px;font-size:13px;color:#6cf;border-bottom:1px solid #1a1a24}
+.events{flex:1;overflow-y:auto;padding:8px}
+.ev{padding:3px 8px;border-bottom:1px solid #0a0a12;font-size:11px;line-height:1.5}
+.ev.attack{color:#f66;background:#1a0a0a}
+.ev.broadcast{color:#ff6;background:#1a1a0a}
+.ev.destroy{color:#f33;background:#1a0505;font-weight:bold}
+.ev.hide{color:#334}
+.ev.research{color:#335}
+.legend{padding:8px 12px;border-top:1px solid #1a1a24;font-size:11px;line-height:1.8}
+.err{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:#311;color:#f66;padding:8px 20px;border-radius:6px;font-size:13px;z-index:200;display:none}
+.speed-label{font-size:11px;color:#555;margin:0 4px}
+</style>
+</head>
+<body>
+<div id="loading">🌌 加载中...</div>
+<div id="app">
+  <div class="topbar">
+    <h1>🌌 黑暗森林模拟器</h1>
+    <select id="scen"><option value="">自定义</option></select>
+    <button id="btn-new">🆕 新模拟</button>
+    <button id="btn-step" disabled>▶ 单步</button>
+    <button id="btn-run" disabled class="accent">⏩ 动画运行</button>
+    <button id="btn-stop" disabled>⏹ 停止</button>
+    <span class="speed-label">速度</span>
+    <input type="range" id="speed" min="1" max="20" value="5" style="width:80px">
+    <span class="stat">回合 <b id="tnum">0</b></span>
+    <span class="stat">幸存 <b id="talive">?</b>/<b id="ttotal">?</b></span>
+    <span class="stat">事件 <b id="tevcount">0</b></span>
+  </div>
+  <div class="main">
+    <div class="canvas-wrap" id="wrap"><canvas id="cv"></canvas></div>
+    <div class="panel">
+      <h3>📋 事件日志</h3>
+      <div class="events" id="events"></div>
+      <div class="legend">
+        <div style="margin-bottom:6px;color:#6cf;font-weight:bold">📖 图例</div>
+        <div><span style="color:#44aaff">●</span> <b>隐藏者</b> — 极限隐蔽，暗中科研</div>
+        <div><span style="color:#ff4444">●</span> <b>侵略者</b> — 发现即打击，扩张优先</div>
+        <div><span style="color:#44dd44">●</span> <b>外交家</b> — 通讯建交，签约结盟</div>
+        <div><span style="color:#ddaa44">●</span> <b>观察者</b> — 暗中探测，记录沉默</div>
+        <div><span style="color:#cc44ff">●</span> <b>清理者</b> — 响应广播，光粒清除</div>
+        <div style="margin-top:6px;font-size:10px;color:#555">
+          📡 广播者 &nbsp; 💀 已毁灭 &nbsp; ⚔ 战斗中
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="err" id="err"></div>
+
+<script>
+(async function(){
+if(document.readyState==='loading')await new Promise(r=>document.addEventListener('DOMContentLoaded',r));
+const $=id=>document.getElementById(id);
+const cv=$('cv'),ctx=cv.getContext('2d'),wrap=$('wrap'),eventsEl=$('events');
+const errEl=$('err'),scen=$('scen');
+const btnNew=$('btn-new'),btnStep=$('btn-step'),btnRun=$('btn-run'),btnStop=$('btn-stop');
+const tnum=$('tnum'),talive=$('talive'),ttotal=$('ttotal'),tevcount=$('tevcount'),speed=$('speed');
+
+let simId='', history=[], cursor=0;
+let viewX=250,viewY=250,scale=1, dragging=false,dx=0,dy=0;
+let playing=false,playTimer=null;
+const COLORS={隐藏者:'#44aaff',侵略者:'#ff4444',外交家:'#44dd44',观察者:'#ddaa44',清理者:'#cc44ff'};
+
+function showErr(m){errEl.textContent=m;errEl.style.display='';setTimeout(()=>errEl.style.display='none',5000);}
+async function api(path,opts={}){
+  const r=await fetch(path,{headers:{'Content-Type':'application/json'},...opts});
+  if(!r.ok)throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+// ── Canvas ──
+function resizeCanvas(){cv.width=wrap.clientWidth;cv.height=wrap.clientHeight;}
+function w2s(wx,wy){return[(wx-viewX)*scale+cv.width/2,(wy-viewY)*scale+cv.height/2];}
+function draw(){
+  resizeCanvas();
+  const snap=history[cursor];
+  if(!snap){ctx.fillStyle='#06060c';ctx.fillRect(0,0,cv.width,cv.height);return;}
+  ctx.fillStyle='#06060c';ctx.fillRect(0,0,cv.width,cv.height);
+
+  // Stars
+  for(let i=0;i<300;i++){
+    const sx=((i*137.5+3)%1000)/1000*cv.width;
+    const sy=((i*271.3+7)%1000)/1000*cv.height;
+    const b=0.05+(i%3)*0.08;
+    ctx.fillStyle=`rgba(255,255,255,${b})`;ctx.fillRect(sx,sy,1.2,1.2);
+  }
+
+  const civs=snap.civilizations||[];
+  // Sort: destroyed civs drawn first (behind), then alive
+  const sorted=[...civs].sort((a,b)=>(a.is_destroyed?1:0)-(b.is_destroyed?1:0));
+
+  for(const civ of sorted){
+    const [sx,sy]=w2s(civ.position.x,civ.position.y);
+    const r=Math.max(6,Math.sqrt(civ.population||50)*1.2*scale);
+    if(sx<-80||sx>cv.width+80||sy<-80||sy>cv.height+80)continue;
+
+    const col=COLORS[civ.strategy]||'#888888';
+    let hex=col.replace('#','');
+    if(hex.length===3) hex=hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+    const R=parseInt(hex.slice(0,2),16),G=parseInt(hex.slice(2,4),16),B=parseInt(hex.slice(4,6),16);
+    const alpha=civ.is_destroyed?0.2:0.7;
+
+    // Detection ring
+    if(!civ.is_destroyed&&(civ.detection_range||40)*scale>2){
+      ctx.beginPath();ctx.arc(sx,sy,(civ.detection_range||40)*scale,0,Math.PI*2);
+      ctx.fillStyle=`rgba(${R},${G},${B},0.04)`;ctx.fill();
+      ctx.strokeStyle=`rgba(${R},${G},${B},0.12)`;ctx.lineWidth=0.5;ctx.stroke();
+    }
+
+    // Body glow
+    const grad=ctx.createRadialGradient(sx,sy,r*0.3,sx,sy,r*2);
+    grad.addColorStop(0,`rgba(${R},${G},${B},${alpha*0.6})`);
+    grad.addColorStop(0.5,`rgba(${R},${G},${B},${alpha*0.2})`);
+    grad.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.beginPath();ctx.arc(sx,sy,r*2,0,Math.PI*2);
+    ctx.fillStyle=grad;ctx.fill();
+
+    // Core circle
+    ctx.beginPath();ctx.arc(sx,sy,r,0,Math.PI*2);
+    ctx.fillStyle=civ.is_destroyed?'#221111':col;
+    ctx.fill();
+    ctx.strokeStyle=`rgba(255,255,255,${civ.is_destroyed?0.1:0.3})`;ctx.lineWidth=1;ctx.stroke();
+
+    // Broadcast ring
+    if(civ.has_broadcast&&!civ.is_destroyed){
+      const pr=(Date.now()%2000)/2000*30*scale;
+      ctx.beginPath();ctx.arc(sx,sy,r+4+pr,0,Math.PI*2);
+      ctx.strokeStyle='rgba(255,255,100,0.6)';ctx.lineWidth=2;ctx.stroke();
+      ctx.beginPath();ctx.arc(sx,sy,r+10+pr,0,Math.PI*2);
+      ctx.strokeStyle='rgba(255,255,100,0.2)';ctx.lineWidth=1;ctx.stroke();
+    }
+
+    // Name
+    const fs=Math.max(10,13*scale);
+    ctx.fillStyle=civ.is_destroyed?'#442222':'#ccc';
+    ctx.font=`${fs}px sans-serif`;
+    ctx.textAlign='left';ctx.textBaseline='middle';
+
+    const label=civ.is_destroyed?`💀${civ.name}`:`${civ.has_broadcast?'📡':''}${civ.name}`;
+    // Background for readability
+    const tw=ctx.measureText(label).width;
+    ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(sx+r+4,sy-fs/2-2,tw+4,fs+4);
+    ctx.fillStyle=civ.is_destroyed?'#664444':'#ddd';
+    ctx.fillText(label,sx+r+6,sy);
+  }
+
+  // Stats
+  tnum.textContent=snap.turn||0;
+  talive.textContent=civs.filter(c=>!c.is_destroyed).length;
+  ttotal.textContent=civs.length;
+}
+
+// ── Events ──
+function renderEvents(){
+  const snap=history[cursor];
+  if(!snap){eventsEl.innerHTML='';tevcount.textContent='0';return;}
+  const log=snap.event_log||[];
+  const visible=log.filter(e=>!e.includes('(stealth=')).slice(-50).reverse();
+
+  eventsEl.innerHTML=visible.map(e=>{
+    let cls='ev';
+    if(e.includes('广播')||e.includes('通信'))cls+=' broadcast';
+    else if(e.includes('摧毁')||e.includes('毁灭')||e.includes('光粒')||e.includes('二向箔'))cls+=' destroy';
+    else if(e.includes('打击')||e.includes('攻击')||e.includes('预防性'))cls+=' attack';
+    else if(e.includes('威慑')||e.includes('条约'))cls+=' broadcast';
+    else if(e.includes('突破'))cls+=' broadcast';
+    return `<div class="${cls}">${e}</div>`;
+  }).join('');
+  tevcount.textContent=log.length;
+}
+
+// ── Canvas interaction ──
+wrap.addEventListener('wheel',e=>{e.preventDefault();scale=Math.max(0.1,Math.min(10,scale*(e.deltaY<0?1.15:0.85)));draw();});
+wrap.addEventListener('mousedown',e=>{dragging=true;dx=e.clientX;dy=e.clientY;});
+window.addEventListener('mousemove',e=>{if(!dragging)return;viewX-=(e.clientX-dx)/scale;viewY-=(e.clientY-dy)/scale;dx=e.clientX;dy=e.clientY;draw();});
+window.addEventListener('mouseup',()=>{dragging=false;});
+
+// ── Playback ──
+function stopPlayback(){if(playTimer)clearTimeout(playTimer);playing=false;btnStop.disabled=true;btnStep.disabled=false;btnRun.disabled=false;}
+btnStop.onclick=stopPlayback;
+
+async function animateRun(){
+  if(!simId||playing)return;
+  playing=true;btnStep.disabled=true;btnRun.disabled=true;btnStop.disabled=false;btnNew.disabled=true;
+
+  let boring=0;
+  while(playing){
+    try{
+      const snap=await api('/api/simulations/'+simId+'/step',{method:'POST'});
+      if(!playing)break;  // stopped during fetch
+      history.push(snap);cursor=history.length-1;
+      draw();renderEvents();
+
+      const alive=snap.civilizations.filter(c=>!c.is_destroyed).length;
+      if(alive<=1){showErr('🏆 模拟结束：只剩一个文明幸存');stopPlayback();break;}
+
+      // Count boring turns (no combat/broadcast)
+      const evts=snap.event_log||[];
+      const hot=evts.some(e=>e.includes('摧毁')||e.includes('广播')||e.includes('打击')||e.includes('光粒'));
+      boring=hot?0:boring+1;
+      if(boring>80){showErr('💤 宇宙归于沉寂——连续80回合无战事');stopPlayback();break;}
+
+      const delay=Math.max(30,500-speed.value*25);
+      await new Promise(r=>playTimer=setTimeout(r,delay));
+      if(!playing)break;
+    }catch(e){showErr('出错了: '+e.message);stopPlayback();break;}
+  }
+  stopPlayback();
+}
+
+btnRun.onclick=()=>{if(history.length===0)return;animateRun();};
+
+btnStep.onclick=async()=>{
+  if(!simId)return;
+  try{const snap=await api('/api/simulations/'+simId+'/step',{method:'POST'});history.push(snap);cursor=history.length-1;draw();renderEvents();}
+  catch(e){showErr('Fail: '+e.message);}
+};
+
+// ── New simulation ──
+btnNew.onclick=async()=>{
+  stopPlayback();
+  try{
+    const r=await api('/api/simulations',{method:'POST',body:JSON.stringify(
+      {universe_width:250,max_turns:500,hider_count:3,aggressor_count:2,diplomat_count:2,observer_count:1,cleaner_count:1,base_detection_range:80,min_spawn_distance:12}
+    )});
+    simId=r.id;
+    const snap=await api('/api/simulations/'+r.id);
+    history=[snap];cursor=0;
+    draw();renderEvents();
+    btnStep.disabled=false;btnRun.disabled=false;
+  }catch(e){showErr('❌ 后端未启动？运行: cd dark-forest && python3 -m uvicorn api.main:app --port 8000');}
+};
+btnStep.disabled=true;btnRun.disabled=true;
+
+scen.onchange=async()=>{
+  if(!scen.value)return;stopPlayback();
+  try{const r=await api('/api/scenarios/'+scen.value+'/run',{method:'POST'});simId=r.sim_id;history=r.history||[r.final];cursor=history.length-1;draw();renderEvents();btnStep.disabled=false;btnRun.disabled=false;}
+  catch(e){showErr('场景加载失败');}
+};
+
+// ── Init ──
+window.addEventListener('resize',draw);
+
+// Auto-refresh canvas for broadcast pulse animations
+function animLoop(){if(playing||history.length===0)draw();requestAnimationFrame(animLoop);}
+requestAnimationFrame(animLoop);
+
+try{
+  const scens=await api('/api/scenarios');
+  scen.innerHTML='<option value="">自定义</option>'+scens.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  // Auto-create
+  const r=await api('/api/simulations',{method:'POST',body:JSON.stringify(
+    {universe_width:250,max_turns:500,hider_count:3,aggressor_count:2,diplomat_count:2,observer_count:1,cleaner_count:1,base_detection_range:80,min_spawn_distance:12}
+  )});
+  simId=r.id;
+  const snap=await api('/api/simulations/'+r.id);
+  history=[snap];cursor=0;
+  draw();renderEvents();
+  btnStep.disabled=false;btnRun.disabled=false;
+  $('loading').style.display='none';$('app').style.display='flex';
+}catch(e){
+  $('loading').textContent='❌ 连接失败: '+e.message+'\n请确认后端已启动';
+  $('app').style.display='flex';
+  showErr('❌ '+e.message);
+}
+})();
+</script>
+</body>
+</html>
