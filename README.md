@@ -150,3 +150,7 @@ PYTHONPATH=. python3 tests/test_v2_smoke.py
 1. 新建 `engine/systems/newsystem.py`，实现纯函数
 2. 在 `engine/core/events.py` 添加新事件类型
 3. 在 `engine/runner.py` 的 `_execute()` 中注册新 Action
+
+---
+
+*本项目由 **DeepSeek-V4-Pro** + **Hermes Agent** 生成*
