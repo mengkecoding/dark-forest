@@ -201,7 +201,7 @@ window.addEventListener('mousemove',e=>{if(!dragging)return;viewX-=(e.clientX-dx
 window.addEventListener('mouseup',()=>{dragging=false;});
 
 // ── Playback ──
-function stopPlayback(){if(playTimer)clearTimeout(playTimer);playing=false;btnStop.disabled=true;btnStep.disabled=false;btnRun.disabled=false;}
+function stopPlayback(){if(playTimer)clearTimeout(playTimer);playing=false;btnStop.disabled=true;btnStep.disabled=false;btnRun.disabled=false;btnNew.disabled=false;}
 btnStop.onclick=stopPlayback;
 
 async function animateRun(){
