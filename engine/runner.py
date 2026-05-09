@@ -143,6 +143,12 @@ class SimulationRunner:
         for civ in self._active_civs():
             from .systems import diplomacy
             diplomacy.tick_treaties(civ, self.universe)
+            # Chain of suspicion escalation
+            known_ids = list(civ.memory.known_civs.keys())
+            name_lookup = {c.id: c.name for c in self.universe.civilizations}
+            msgs = civ.diplomacy.tick_suspicion(civ.traits.paranoia, known_ids, name_lookup)
+            for msg in msgs:
+                self.universe.log_event(msg)
 
         # 9. Take snapshot
         return self.take_snapshot()

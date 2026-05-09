@@ -44,7 +44,7 @@ def evaluate_treaty_response(
     proposer traits.aggression.
     """
     trust = target.diplomacy.evaluate_trust(
-        proposer.diplomacy.reputation, target.traits.paranoia,
+        proposer.diplomacy.reputation, proposer.id,
     )
     power_ratio = proposer.military.military_power / max(target.military.military_power, 1.0)
 
