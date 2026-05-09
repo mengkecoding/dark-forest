@@ -284,9 +284,11 @@ class SimulationRunner:
         return candidates[0][1]
 
     def _pick_broadcast_target(self, civ: Civilization) -> Civilization | None:
-        """Pick strongest known target to broadcast."""
+        """Pick strongest known target to broadcast (never self)."""
         candidates: list[tuple[float, Civilization]] = []
         for cid in civ.memory.known_civs:
+            if cid == civ.id:
+                continue  # never broadcast yourself
             other = self._find_civ(cid)
             if other and not other.is_destroyed:
                 candidates.append((other.military.military_power, other))

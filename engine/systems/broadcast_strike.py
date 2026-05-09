@@ -100,7 +100,7 @@ def process_global_strikes(target: Civilization, universe: Universe) -> None:
         strategy_label = getattr(civ.strategy, 'label', '')
 
         # CLEANER always strikes
-        if strategy_label == 'Cleaner':
+        if strategy_label == '清理者':
             strikers.append(civ)
             continue
 
@@ -134,8 +134,7 @@ def process_global_strikes(target: Civilization, universe: Universe) -> None:
             broadcast_source_id='',
         ))
         universe.log_event(
-            f'{striker.name} 响应广播，对 {target.name} 发起打击 '
-            f'({weapon.value})'
+            f'{striker.name} 响应广播，对 {target.name} 发起{weapon.label}打击'
         )
 
         success = combat.resolve_attack(striker, target, universe, weapon=weapon)
