@@ -75,7 +75,8 @@ def broadcast_target_coords(
     })
 
 
-def process_global_strikes(target: Civilization, universe: Universe) -> None:
+def process_global_strikes(target: Civilization, universe: Universe,
+                           broadcaster_id: str = '') -> None:
     """After a broadcast, check which civs want to strike.
 
     CLEANER: always strike (100%)
@@ -93,6 +94,9 @@ def process_global_strikes(target: Civilization, universe: Universe) -> None:
 
     for civ in universe.civilizations:
         if civ.id == target.id or civ.is_destroyed:
+            continue
+        # Don't let the broadcaster respond to their own broadcast
+        if civ.id == broadcaster_id:
             continue
         if civ.memory.known_civs.get(target.id) is None:
             continue

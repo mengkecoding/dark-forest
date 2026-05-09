@@ -121,7 +121,10 @@ class SimulationRunner:
             target = self._find_civ(signal.get('target_id', ''))
             if target and not target.is_destroyed:
                 from .systems import broadcast_strike
-                broadcast_strike.process_global_strikes(target, self.universe)
+                broadcast_strike.process_global_strikes(
+                    target, self.universe,
+                    broadcaster_id=signal.get('broadcaster_id', ''),
+                )
 
         # 5. Process economy (maintenance + breakthrough checks)
         for civ in self._active_civs():
@@ -176,6 +179,14 @@ class SimulationRunner:
         elif action == Action.BROADCAST_TARGET:
             target = self._pick_broadcast_target(civ)
             if target:
+                # Broadcast cooldown — don't broadcast same target repeatedly
+                if not hasattr(civ, '_recent_broadcasts'):
+                    civ._recent_broadcasts = set()
+                if target.id in civ._recent_broadcasts:
+                    return  # skip, already broadcasted this target
+                civ._recent_broadcasts.add(target.id)
+                if len(civ._recent_broadcasts) > 3:
+                    civ._recent_broadcasts = set(list(civ._recent_broadcasts)[-3:])
                 from .systems import broadcast_strike
                 broadcast_strike.broadcast_target_coords(civ, target, self.universe)
             else:
