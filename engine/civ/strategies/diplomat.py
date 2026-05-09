@@ -40,7 +40,14 @@ class DiplomatStrategy(BaseStrategy):
         if detected:
             return Action.COMMUNICATE
 
-        # 2. Propose treaties with known neighbors not yet allied/treated
+        # 2. Check for military threats FIRST — deterrence is urgent
+        if civ.diplomacy.reputation > 0.4 and not civ.diplomacy.deterrence_declared:
+            for cid, data in civ.memory.known_civs.items():
+                mp = data.get('military_power', 0)
+                if mp > civ.military.military_power * 1.3:
+                    return Action.DECLARE_DETERRENCE
+
+        # 3. Propose treaties with known neighbors
         for cid in known:
             treaty = civ.diplomacy.treaties.get(cid)
             if treaty is None:
@@ -56,14 +63,7 @@ class DiplomatStrategy(BaseStrategy):
                 else:
                     return Action.PROPOSE_TREATY  # alliance later
 
-        # 3. If reputation high and a neighbor is threatening → deterrence
-        if civ.diplomacy.reputation > 0.6:
-            for cid, data in civ.memory.known_civs.items():
-                mp = data.get('military_power', 0)
-                if mp > civ.military.military_power * 1.5:
-                    return Action.DECLARE_DETERRENCE
-
-        # 4. Default — research to stay relevant
+        # 4. Default — research
         return Action.RESEARCH
 
     def _new_detections(self, civ: Civilization, universe) -> bool:
